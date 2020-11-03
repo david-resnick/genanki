@@ -4,6 +4,9 @@ from cached_property import cached_property
 
 from .card import Card
 from .util import guid_for
+# Using the epoch milliseconds of when the note was created as ANKI do
+import time
+current_milli_time = lambda: int(round(time.time() * 1000))
 
 
 class _TagList(list):
@@ -146,7 +149,11 @@ class Note:
   def write_to_db(self, cursor, now_ts, deck_id):
     self._check_number_model_fields_matches_num_fields()
     self._check_invalid_html_tags_in_fields()
-    cursor.execute('INSERT INTO notes VALUES(null,?,?,?,?,?,?,?,?,?,?);', (
+    note_id = current_milli_time()
+    # Wait for 1 milliseconds to ensure that id is unique
+    time.sleep(.001)
+    cursor.execute('INSERT INTO notes VALUES(?,?,?,?,?,?,?,?,?,?,?);', (
+        note_id,                      # id
         self.guid,                    # guid
         self.model.model_id,          # mid
         now_ts,                       # mod
@@ -159,7 +166,6 @@ class Note:
         '',                           # data
     ))
 
-    note_id = cursor.lastrowid
     for card in self.cards:
       card.write_to_db(cursor, now_ts, deck_id, note_id)
 
